@@ -1,0 +1,40 @@
+﻿<Window x:Class="MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:system="clr-namespace:System;assembly=mscorlib"
+        xmlns:local="clr-namespace:PanelDragDropReorder"
+        mc:Ignorable="d"
+        Title="PanelDragDropReorder" Height="500" Width="800">
+    <Window.DataContext>
+        <local:MainWindowVM/>
+    </Window.DataContext>
+
+    <Grid>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding collection}">
+                <ItemsControl.Items>
+                    <!--Test without ItemsSource--><!--
+                    <system:String>One</system:String>
+                    <system:String>Two</system:String>
+                    <system:String>Three</system:String>
+                    <system:String>Four</system:String>
+                    <system:String>Five</system:String>-->
+                </ItemsControl.Items>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <local:Tile Width="100" Height="100" Background="Transparent" BorderBrush="Black" BorderThickness="1" Margin="5">
+                            <TextBlock FontSize="20" Text="{Binding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </local:Tile>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</Window>
