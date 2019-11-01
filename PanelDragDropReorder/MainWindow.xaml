@@ -13,7 +13,7 @@
 
     <Grid>
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding collection}">
+            <ItemsControl x:Name="icCollection" ItemsSource="{Binding collection}">
                 <ItemsControl.Items>
                     <!--Test without ItemsSource--><!--
                     <system:String>One</system:String>

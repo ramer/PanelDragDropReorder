@@ -1,5 +1,6 @@
 ﻿
 Imports System.Collections.ObjectModel
+Imports System.Windows.Media.Animation
 
 Public Class Tile
     Inherits Border
@@ -12,6 +13,35 @@ Public Class Tile
         MyBase.New()
         AllowDrop = True
     End Sub
+
+#Region "DependencyProperties"
+
+    Public Shared ReadOnly DraggedOpacityProperty As DependencyProperty = DependencyProperty.Register("DraggedOpacity", GetType(Double), GetType(Tile), New PropertyMetadata(0.0))
+
+    Public Property DraggedOpacity() As Double
+        Get
+            Return GetValue(DraggedOpacityProperty)
+        End Get
+        Set
+            SetCurrentValue(DraggedOpacityProperty, Value)
+        End Set
+    End Property
+
+
+    Public Shared ReadOnly DraggedAnimationProperty As DependencyProperty = DependencyProperty.Register("DraggedAnimation", GetType(Boolean), GetType(Tile), New PropertyMetadata(True))
+
+    Public Property DraggedAnimation() As Boolean
+        Get
+            Return GetValue(DraggedAnimationProperty)
+        End Get
+        Set
+            SetCurrentValue(DraggedAnimationProperty, Value)
+        End Set
+    End Property
+
+
+#End Region
+
 
 #Region "Events"
 
@@ -43,16 +73,14 @@ Public Class Tile
         Dim targetdata As Object = targetelement.DataContext : If targetdata Is Nothing Then Exit Sub
         Dim panel = FindVisualParent(Of Panel)(Me) : If panel Is Nothing Then Exit Sub
         Dim itemscontrol = FindVisualParent(Of ItemsControl)(panel) : If itemscontrol Is Nothing Then Exit Sub
-
-        Dim itemssource = itemscontrol.ItemsSource
-        If itemssource IsNot Nothing Then
-            Dim sourcetype As Type = itemssource.GetType
-            If Not sourcetype.IsGenericType OrElse Not (sourcetype.GetGenericTypeDefinition = GetType(ObservableCollection(Of))) Then Exit Sub
-            Dim collection As Object = itemssource ' ObservableCollection of sometype
-            Dim sourcedataindex As Integer = collection.IndexOf(sourcedata) : If sourcedataindex = -1 Then Exit Sub
-            Dim targetdataindex As Integer = collection.IndexOf(targetdata) : If targetdataindex = -1 Then Exit Sub
-            collection.Move(sourcedataindex, targetdataindex)
-        End If
+        Dim itemssource = itemscontrol.ItemsSource : If itemssource Is Nothing Then Exit Sub
+        Dim sourcetype As Type = itemssource.GetType
+        If Not sourcetype.IsGenericType OrElse Not (sourcetype.GetGenericTypeDefinition = GetType(ObservableCollection(Of))) Then Exit Sub
+        Dim collection As Object = itemssource ' ObservableCollection of sometype
+        Dim sourcedataindex As Integer = collection.IndexOf(sourcedata) : If sourcedataindex = -1 Then Exit Sub
+        Dim targetdataindex As Integer = collection.IndexOf(targetdata) : If targetdataindex = -1 Then Exit Sub
+        collection.Move(sourcedataindex, targetdataindex)
+        If DraggedAnimation Then FadeIn(itemscontrol.ItemContainerGenerator.ContainerFromIndex(sourcedataindex))
     End Sub
 
     Private Sub Tile_PreviewDrop(sender As Object, e As DragEventArgs) Handles Me.PreviewDrop
@@ -64,15 +92,12 @@ Public Class Tile
         Dim targetdata As Object = targetelement.DataContext : If targetdata Is Nothing Then Exit Sub
         Dim panel = FindVisualParent(Of Panel)(Me) : If panel Is Nothing Then Exit Sub
         Dim itemscontrol = FindVisualParent(Of ItemsControl)(panel) : If itemscontrol Is Nothing Then Exit Sub
-
-        Dim items = itemscontrol.Items
-        If items IsNot Nothing Then
-            Dim sourcedataindex As Integer = items.IndexOf(sourcedata) : If sourcedataindex = -1 Then Exit Sub
-            Dim targetdataindex As Integer = items.IndexOf(targetdata) : If targetdataindex = -1 Then Exit Sub
-            items.RemoveAt(sourcedataindex)
-            items.Insert(targetdataindex, sourcedata)
-            itemscontrol.UpdateLayout()
-        End If
+        Dim items = itemscontrol.Items : If items Is Nothing Then Exit Sub
+        Dim sourcedataindex As Integer = items.IndexOf(sourcedata) : If sourcedataindex = -1 Then Exit Sub
+        Dim targetdataindex As Integer = items.IndexOf(targetdata) : If targetdataindex = -1 Then Exit Sub
+        items.RemoveAt(sourcedataindex)
+        items.Insert(targetdataindex, sourcedata)
+        itemscontrol.UpdateLayout()
     End Sub
 
 #End Region
@@ -84,7 +109,7 @@ Public Class Tile
         Dim lastallowdrop As Boolean = window.AllowDrop : window.AllowDrop = True
         AddHandler window.PreviewDragOver, AddressOf Window_PreviewDragOver
         adorner = New DragAdorner(Me, Me, startpoint) : AdornerLayer.GetAdornerLayer(window.Content).Add(adorner)
-        Dim lastopacity = Opacity : Opacity = 0.1
+        Dim lastopacity = Opacity : Opacity = DraggedOpacity
         Dim dragdata As New DataObject(Me) : DragDrop.DoDragDrop(Me, dragdata, DragDropEffects.Move)
         Opacity = lastopacity
         AdornerLayer.GetAdornerLayer(window.Content).Remove(adorner) : adorner = Nothing
@@ -107,6 +132,23 @@ Public Class Tile
             Return Nothing
         End If
     End Function
+
+    Private Shared Sub AnimateOpacity(ByVal target As DependencyObject, ByVal from As Double, ByVal [to] As Double)
+        Dim opacityAnimation = New DoubleAnimation With {
+            .From = from,
+            .[To] = [to],
+            .Duration = TimeSpan.FromMilliseconds(500)
+        }
+        Storyboard.SetTarget(opacityAnimation, target)
+        Storyboard.SetTargetProperty(opacityAnimation, New PropertyPath("Opacity"))
+        Dim _storyboard = New Storyboard()
+        _storyboard.Children.Add(opacityAnimation)
+        _storyboard.Begin()
+    End Sub
+
+    Public Shared Sub FadeIn(ByVal target As DependencyObject)
+        AnimateOpacity(target, 0, 1)
+    End Sub
 
 #End Region
 
