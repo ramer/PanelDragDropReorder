@@ -13,7 +13,7 @@
 
     <Grid>
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <ItemsControl x:Name="icCollection" ItemsSource="{Binding collection}">
+            <ItemsControl ItemsSource="{Binding collection}">
                 <ItemsControl.Items>
                     <!--Test without ItemsSource--><!--
                     <system:String>One</system:String>
@@ -24,13 +24,17 @@
                 </ItemsControl.Items>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <local:Tile Width="100" Height="100" Background="Transparent" BorderBrush="Black" BorderThickness="1" Margin="5">
+                        <!--Use Tile (border) as item container for template-->
+                        <!--Default values-->
+                        <local:Tile AllowDrag="True" DraggedAnimation="True" DraggedOpacity="0"
+                            Width="100" Height="100" Background="Transparent" BorderBrush="Black" BorderThickness="1" Margin="5">
                             <TextBlock FontSize="20" Text="{Binding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </local:Tile>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
+                        <!--Use any panel-->
                         <WrapPanel/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>

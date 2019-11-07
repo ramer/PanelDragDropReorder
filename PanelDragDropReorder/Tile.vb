@@ -16,6 +16,17 @@ Public Class Tile
 
 #Region "DependencyProperties"
 
+    Public Shared ReadOnly AllowDragProperty As DependencyProperty = DependencyProperty.Register("AllowDrag", GetType(Boolean), GetType(Tile), New PropertyMetadata(True))
+
+    Public Property AllowDrag() As Boolean
+        Get
+            Return GetValue(AllowDragProperty)
+        End Get
+        Set
+            SetCurrentValue(AllowDragProperty, Value)
+        End Set
+    End Property
+
     Public Shared ReadOnly DraggedOpacityProperty As DependencyProperty = DependencyProperty.Register("DraggedOpacity", GetType(Double), GetType(Tile), New PropertyMetadata(0.0))
 
     Public Property DraggedOpacity() As Double
@@ -39,17 +50,20 @@ Public Class Tile
         End Set
     End Property
 
-
 #End Region
 
 
 #Region "Events"
 
     Private Sub Tile_PreviewMouseLeftButtonDown(sender As Object, e As MouseButtonEventArgs) Handles Me.PreviewMouseLeftButtonDown
+        If Not AllowDrag Then Exit Sub
+
         mousedownpoint = e.GetPosition(sender)
     End Sub
 
     Private Sub Tile_PreviewMouseMove(sender As Object, e As MouseEventArgs) Handles Me.PreviewMouseMove
+        If Not AllowDrag Then Exit Sub
+
         Dim mousemovepoint = e.GetPosition(sender)
         If Not mousedownpoint.HasValue OrElse e.LeftButton = MouseButtonState.Released OrElse
         (Point.Subtract(mousedownpoint.Value, mousemovepoint).Length < SystemParameters.MinimumHorizontalDragDistance And
@@ -92,6 +106,7 @@ Public Class Tile
         Dim targetdata As Object = targetelement.DataContext : If targetdata Is Nothing Then Exit Sub
         Dim panel = FindVisualParent(Of Panel)(Me) : If panel Is Nothing Then Exit Sub
         Dim itemscontrol = FindVisualParent(Of ItemsControl)(panel) : If itemscontrol Is Nothing Then Exit Sub
+        If itemscontrol.ItemsSource IsNot Nothing Then Exit Sub
         Dim items = itemscontrol.Items : If items Is Nothing Then Exit Sub
         Dim sourcedataindex As Integer = items.IndexOf(sourcedata) : If sourcedataindex = -1 Then Exit Sub
         Dim targetdataindex As Integer = items.IndexOf(targetdata) : If targetdataindex = -1 Then Exit Sub
