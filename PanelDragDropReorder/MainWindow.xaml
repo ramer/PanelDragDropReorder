@@ -26,10 +26,10 @@
                     <DataTemplate>
                         <!--Use Tile (border) as item container for template-->
                         <!--Default values-->
-                        <local:Tile AllowDrag="True" DraggedAnimation="True" DraggedOpacity="0"
+                        <Border local:DragDropReorderer.AllowDrag="True"
                             Width="100" Height="100" Background="Transparent" BorderBrush="Black" BorderThickness="1" Margin="5">
                             <TextBlock FontSize="20" Text="{Binding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </local:Tile>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
                 <ItemsControl.ItemsPanel>

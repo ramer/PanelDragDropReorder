@@ -1,91 +1,97 @@
-﻿
-Imports System.Collections.ObjectModel
+﻿Imports System.Collections.ObjectModel
 Imports System.Windows.Media.Animation
 
-Public Class Tile
-    Inherits Border
+Public Class DragDropReorderer
 
-    Private mousedownpoint As Point?
-    Private adorner As DragAdorner
-    Private window As Window
+    Private Shared elements As New List(Of UIElement)
+    Private Shared mousedownpoint As Point?
+    Private Shared adorner As DragAdorner
+    Private Shared window As Window
 
-    Sub New()
-        MyBase.New()
-        AllowDrop = True
+#Region "AttachedProperties"
+
+    Public Shared ReadOnly AllowDragProperty As DependencyProperty = DependencyProperty.RegisterAttached(
+        "AllowDrag", GetType(Boolean), GetType(DragDropReorderer), New PropertyMetadata(False,
+            Sub(uielement As UIElement, e As DependencyPropertyChangedEventArgs)
+                If e.NewValue IsNot Nothing AndAlso e.NewValue = True Then
+                    AddHandler uielement.PreviewMouseLeftButtonDown, AddressOf UIElement_PreviewMouseLeftButtonDown
+                    AddHandler uielement.PreviewMouseMove, AddressOf UIElement_PreviewMouseMove
+                    AddHandler uielement.PreviewDragOver, AddressOf UIElement_PreviewDragOver
+                    AddHandler uielement.PreviewDrop, AddressOf UIElement_PreviewDrop
+                    uielement.AllowDrop = True
+                    If Not elements.Contains(uielement) Then elements.Add(uielement)
+                End If
+                If e.NewValue IsNot Nothing AndAlso e.NewValue = False Then
+                    RemoveHandler uielement.PreviewMouseLeftButtonDown, AddressOf UIElement_PreviewMouseLeftButtonDown
+                    RemoveHandler uielement.PreviewMouseMove, AddressOf UIElement_PreviewMouseMove
+                    RemoveHandler uielement.PreviewDragOver, AddressOf UIElement_PreviewDragOver
+                    RemoveHandler uielement.PreviewDrop, AddressOf UIElement_PreviewDrop
+                    If elements.Contains(uielement) Then elements.Remove(uielement)
+                End If
+            End Sub))
+
+    Public Shared Function GetAllowDrag(element As UIElement) As Boolean
+        If element Is Nothing Then Throw New ArgumentException
+        Return element.GetValue(AllowDragProperty)
+    End Function
+
+    Public Shared Sub SetAllowDrag(element As UIElement, value As Boolean)
+        element.SetValue(AllowDragProperty, value)
     End Sub
 
-#Region "DependencyProperties"
+    Public Shared ReadOnly DraggedOpacityProperty As DependencyProperty = DependencyProperty.RegisterAttached("DraggedOpacity", GetType(Double), GetType(DragDropReorderer), New PropertyMetadata(0.0))
 
-    Public Shared ReadOnly AllowDragProperty As DependencyProperty = DependencyProperty.Register("AllowDrag", GetType(Boolean), GetType(Tile), New PropertyMetadata(True))
+    Public Shared Function GetDraggedOpacity(element As UIElement) As Double
+        If element Is Nothing Then Throw New ArgumentException
+        Return element.GetValue(DraggedOpacityProperty)
+    End Function
 
-    Public Property AllowDrag() As Boolean
-        Get
-            Return GetValue(AllowDragProperty)
-        End Get
-        Set
-            SetCurrentValue(AllowDragProperty, Value)
-        End Set
-    End Property
+    Public Shared Sub SetDraggedOpacity(element As UIElement, value As Double)
+        element.SetValue(DraggedOpacityProperty, value)
+    End Sub
 
-    Public Shared ReadOnly DraggedOpacityProperty As DependencyProperty = DependencyProperty.Register("DraggedOpacity", GetType(Double), GetType(Tile), New PropertyMetadata(0.0))
+    Public Shared ReadOnly DraggedAnimationProperty As DependencyProperty = DependencyProperty.RegisterAttached("DraggedAnimation", GetType(Boolean), GetType(DragDropReorderer), New PropertyMetadata(True))
 
-    Public Property DraggedOpacity() As Double
-        Get
-            Return GetValue(DraggedOpacityProperty)
-        End Get
-        Set
-            SetCurrentValue(DraggedOpacityProperty, Value)
-        End Set
-    End Property
+    Public Shared Function GetDraggedAnimation(element As UIElement)
+        If element Is Nothing Then Throw New ArgumentException
+        Return element.GetValue(DraggedAnimationProperty)
+    End Function
 
-
-    Public Shared ReadOnly DraggedAnimationProperty As DependencyProperty = DependencyProperty.Register("DraggedAnimation", GetType(Boolean), GetType(Tile), New PropertyMetadata(True))
-
-    Public Property DraggedAnimation() As Boolean
-        Get
-            Return GetValue(DraggedAnimationProperty)
-        End Get
-        Set
-            SetCurrentValue(DraggedAnimationProperty, Value)
-        End Set
-    End Property
+    Public Shared Sub SetDraggedAnimation(element As UIElement, value As Boolean)
+        element.SetValue(DraggedAnimationProperty, value)
+    End Sub
 
 #End Region
 
-
 #Region "Events"
 
-    Private Sub Tile_PreviewMouseLeftButtonDown(sender As Object, e As MouseButtonEventArgs) Handles Me.PreviewMouseLeftButtonDown
-        If Not AllowDrag Then Exit Sub
-
+    Private Shared Sub UIElement_PreviewMouseLeftButtonDown(sender As Object, e As MouseButtonEventArgs)
         mousedownpoint = e.GetPosition(sender)
     End Sub
 
-    Private Sub Tile_PreviewMouseMove(sender As Object, e As MouseEventArgs) Handles Me.PreviewMouseMove
-        If Not AllowDrag Then Exit Sub
-
+    Private Shared Sub UIElement_PreviewMouseMove(sender As Object, e As MouseEventArgs)
         Dim mousemovepoint = e.GetPosition(sender)
         If Not mousedownpoint.HasValue OrElse e.LeftButton = MouseButtonState.Released OrElse
         (Point.Subtract(mousedownpoint.Value, mousemovepoint).Length < SystemParameters.MinimumHorizontalDragDistance And
          Point.Subtract(mousedownpoint.Value, mousemovepoint).Length < SystemParameters.MinimumVerticalDragDistance) Then Exit Sub
 
-        DoDragDrop(mousemovepoint)
+        DoDragDrop(mousemovepoint, sender)
     End Sub
 
-    Private Sub Window_PreviewDragOver(sender As Object, e As DragEventArgs)
+    Private Shared Sub Window_PreviewDragOver(sender As Object, e As DragEventArgs)
         If adorner Is Nothing OrElse window Is Nothing Then Exit Sub
         adorner.LeftOffset = e.GetPosition(window).X
         adorner.TopOffset = e.GetPosition(window).Y
     End Sub
 
-    Private Sub Tile_PreviewDragOver(sender As Object, e As DragEventArgs) Handles Me.PreviewDragOver
-        If Not e.Data.GetDataPresent(Me.GetType) Then Exit Sub
-        Dim sourceelement As Tile = e.Data.GetData(Me.GetType) : If sourceelement Is Nothing Then Exit Sub
-        Dim targetelement As Tile = sender
+    Private Shared Sub UIElement_PreviewDragOver(sender As Object, e As DragEventArgs)
+        If Not e.Data.GetDataPresent(sender.GetType) Then Exit Sub
+        Dim sourceelement As Object = e.Data.GetData(sender.GetType) : If sourceelement Is Nothing Then Exit Sub
+        Dim targetelement As Object = sender
         If sourceelement Is targetelement Then Exit Sub
         Dim sourcedata As Object = sourceelement.DataContext : If sourcedata Is Nothing Then Exit Sub
         Dim targetdata As Object = targetelement.DataContext : If targetdata Is Nothing Then Exit Sub
-        Dim panel = FindVisualParent(Of Panel)(Me) : If panel Is Nothing Then Exit Sub
+        Dim panel = FindVisualParent(Of Panel)(sender) : If panel Is Nothing Then Exit Sub
         Dim itemscontrol = FindVisualParent(Of ItemsControl)(panel) : If itemscontrol Is Nothing Then Exit Sub
         Dim itemssource = itemscontrol.ItemsSource : If itemssource Is Nothing Then Exit Sub
         Dim sourcetype As Type = itemssource.GetType
@@ -94,17 +100,17 @@ Public Class Tile
         Dim sourcedataindex As Integer = collection.IndexOf(sourcedata) : If sourcedataindex = -1 Then Exit Sub
         Dim targetdataindex As Integer = collection.IndexOf(targetdata) : If targetdataindex = -1 Then Exit Sub
         collection.Move(sourcedataindex, targetdataindex)
-        If DraggedAnimation Then FadeIn(itemscontrol.ItemContainerGenerator.ContainerFromIndex(sourcedataindex))
+        If GetDraggedAnimation(sender) Then FadeIn(itemscontrol.ItemContainerGenerator.ContainerFromIndex(sourcedataindex))
     End Sub
 
-    Private Sub Tile_PreviewDrop(sender As Object, e As DragEventArgs) Handles Me.PreviewDrop
-        If Not e.Data.GetDataPresent(Me.GetType) Then Exit Sub
-        Dim sourceelement As Tile = e.Data.GetData(Me.GetType) : If sourceelement Is Nothing Then Exit Sub
-        Dim targetelement As Tile = sender
+    Private Shared Sub UIElement_PreviewDrop(sender As Object, e As DragEventArgs)
+        If Not e.Data.GetDataPresent(sender.GetType) Then Exit Sub
+        Dim sourceelement As Object = e.Data.GetData(sender.GetType) : If sourceelement Is Nothing Then Exit Sub
+        Dim targetelement As Object = sender
         If sourceelement Is targetelement Then Exit Sub
         Dim sourcedata As Object = sourceelement.DataContext : If sourcedata Is Nothing Then Exit Sub
         Dim targetdata As Object = targetelement.DataContext : If targetdata Is Nothing Then Exit Sub
-        Dim panel = FindVisualParent(Of Panel)(Me) : If panel Is Nothing Then Exit Sub
+        Dim panel = FindVisualParent(Of Panel)(sender) : If panel Is Nothing Then Exit Sub
         Dim itemscontrol = FindVisualParent(Of ItemsControl)(panel) : If itemscontrol Is Nothing Then Exit Sub
         If itemscontrol.ItemsSource IsNot Nothing Then Exit Sub
         Dim items = itemscontrol.Items : If items Is Nothing Then Exit Sub
@@ -119,21 +125,21 @@ Public Class Tile
 
 #Region "Subs"
 
-    Private Sub DoDragDrop(startpoint As Point)
-        window = Window.GetWindow(Me) : If window Is Nothing Then Exit Sub
+    Private Shared Sub DoDragDrop(startpoint As Point, uielement As UIElement)
+        window = Window.GetWindow(uielement) : If window Is Nothing Then Exit Sub
         Dim lastallowdrop As Boolean = window.AllowDrop : window.AllowDrop = True
         AddHandler window.PreviewDragOver, AddressOf Window_PreviewDragOver
-        adorner = New DragAdorner(Me, Me, startpoint) : AdornerLayer.GetAdornerLayer(window.Content).Add(adorner)
-        Dim lastopacity = Opacity : Opacity = DraggedOpacity
-        Dim dragdata As New DataObject(Me) : DragDrop.DoDragDrop(Me, dragdata, DragDropEffects.Move)
-        Opacity = lastopacity
+        adorner = New DragAdorner(uielement, uielement, startpoint) : AdornerLayer.GetAdornerLayer(window.Content).Add(adorner)
+        Dim lastopacity = uielement.Opacity : uielement.Opacity = GetDraggedOpacity(uielement)
+        Dim dragdata As New DataObject(uielement) : DragDrop.DoDragDrop(uielement, dragdata, DragDropEffects.Move)
+        uielement.Opacity = lastopacity
         AdornerLayer.GetAdornerLayer(window.Content).Remove(adorner) : adorner = Nothing
         RemoveHandler window.PreviewDragOver, AddressOf Window_PreviewDragOver
         window.AllowDrop = lastallowdrop
     End Sub
 
-    Public Function FindVisualParent(Of T As DependencyObject)(ByVal child As Object, Optional until As DependencyObject = Nothing) As T
-        Dim parent As DependencyObject = If(child.Parent IsNot Nothing, child.Parent, VisualTreeHelper.GetParent(child))
+    Public Shared Function FindVisualParent(Of T As DependencyObject)(ByVal child As Object, Optional until As DependencyObject = Nothing) As T
+        Dim parent As DependencyObject = If(child.Parent, VisualTreeHelper.GetParent(child))
 
         If parent IsNot Nothing Then
             If TypeOf parent Is T Then
